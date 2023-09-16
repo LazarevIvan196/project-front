@@ -1,11 +1,324 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RPG</title>
-    <script src=https://code.jquery.com/jquery-3.6.0.min.js></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link href="/css/my.css" rel="stylesheet">
 </head>
+
 <body>
 <h1>RPG admin panel</h1>
+<h2>Accounts list:</h2>
 
+<label for="labelOne">Count per page</label>
+<select id="labelOne" onchange="getList(0)">
+    <option value="3">3</option>
+    <option value="5">5</option>
+    <option value="10">10</option>
+    <option value="15">15</option>
+    <option value="20">20</option>
+</select>
+
+<table id="personTable">
+    <tr>
+        <th>#</th>
+        <th>Name</th>
+        <th>Title</th>
+        <th>Race</th>
+        <th>Profession</th>
+        <th>Level</th>
+        <th>Birthday</th>
+        <th>Banned</th>
+        <th>Edit</th>
+        <th>Delete</th>
+    </tr>
+</table>
+<div id="buttons">Pages:</div>
+<hr>
+<h3>Create new account:</h3>
+<br>
+<label for="inputNameNew"></label>Name:<input type="text" id="inputNameNew" name="name" required size="12"
+                                              maxlength="12">
+<br>
+<label for='inputTitleNew'>Title:</label><input type="text" id="inputTitleNew" name="title" required size="30"
+                                                maxlength="30">
+<br>
+<label for="selectRaceNew">Race:</label><select id="selectRaceNew" name="race">
+    <option value="HUMAN">NUMAN</option>
+    <option value="DWARF">DWARF</option>
+    <option value="ELF">ELF</option>
+    <option value="GIANT"> GIANT</option>
+    <option value="ORC">ORC</option>
+    <option value="TROLL">TROLL</option>
+    <option value="HOBBIT">HOBBIT</option>
+</select>
+<br>
+<label for="selectProfessionNew">Profession:</label><select id="selectProfessionNew" name="profession">
+    <option value="WARRIOR">WARRIOR</option>
+    <option value="ROGUE">ROGUE</option>
+    <option value="SORCERER">SORCERER</option>
+    <option value="CLERIC">CLERIC</option>
+    <option value="PALADIN">PALADIN</option>
+    <option value="NAZGUL">NAZGUL</option>
+    <option value="WARLOCK">WARLOCK</option>
+    <option value="DRUID">DRUID</option>
+</select>
+<br>
+<label for='inputLevelNew'>Level:</label><input type="number" id="inputLevelNew" name="level" min="0" max="100">
+<br>
+<label for='inputBirthdayNew'>Birthday:</label><input type="date" id="inputBirthdayNew" name="birthday" min="2000-01-01"
+                                                      max="3000-01-01">
+<br>
+<label for="selectBannedNew">Banned:</label><select id="selectBannedNew" name="banned">
+    <option value="false">false</option>
+    <option value="true">true</option>
+</select>
+<br><br>
+<span>
+    <button type="submit" class="saveButton" onclick="createRecord()">Save</button>
+</span>
+
+<script>
+    $(document).ready(function () {
+        const currentPage = getCurrentPage();
+        getList(currentPage);
+    });
+
+    function getCurrentPage() {
+        const currentPageButton = document.querySelector('.pgn-btn-styled.current');
+
+        if (currentPageButton) {
+            const pageNumber = parseInt(currentPageButton.textContent);
+            if (!isNaN(pageNumber)) {
+                return pageNumber;
+            }
+        }
+
+        return 0;
+    }
+
+    function deleteRecord(id) {
+        let url = `/rest/players/${id}`;
+        $.ajax({
+            url: url,
+            type: 'DELETE',
+            success: function () {
+                const current = getCurrentPage();
+                getList(current - 1);
+            }
+        });
+    }
+
+    function editRecord(id) {
+        const row = $(`#personTable tr[data-id="${id}"]`);
+        const editButton = row.find('.edit-button');
+        const deleteButton = row.find('.delete-button');
+
+        const nameCell = row.find('td:nth-child(2)');
+        const titleCell = row.find('td:nth-child(3)');
+        const raceCell = row.find('td:nth-child(4)');
+        const professionCell = row.find('td:nth-child(5)');
+        const bannedCell = row.find('td:nth-child(8)');
+
+        makeFieldEditable(nameCell);
+        makeFieldEditable(titleCell);
+        replaceWithDropdown(raceCell, ['HUMAN', 'DWARF', 'ELF', 'GIANT', 'ORC', 'TROLL', 'HOBBIT']);
+        replaceWithDropdown(professionCell, ['WARRIOR', 'ROGUE', 'SORCERER', 'CLERIC', 'PALADIN', 'NAZGUL', 'WARLOCK', 'DRUID']);
+        replaceWithDropdown(bannedCell, ['true', 'false']);
+
+        deleteButton.hide();
+        editButton.html(`<a href="#" onclick="saveRecord(${id})"><img src="/img/s.jpg" alt="Save" class="icon" width="50" height="50"></a>`);
+    }
+
+    function updateRecord(id, name, title, race, profession, banned) {
+        const url = `/rest/players/${id}`;
+        const data = {
+            name: name,
+            title: title,
+            race: race,
+            profession: profession,
+            banned: banned
+        };
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            dataType: 'json',
+            contentType: 'application/json;charset=UTF-8',
+            async: false,
+            data: JSON.stringify(data),
+            success: function () {
+                const current = getCurrentPage();
+                getList(current - 1);
+            },
+            error: function (error) {
+                console.error(error);
+
+            }
+        });
+    }
+
+    function saveRecord(id) {
+        const row = $(`#personTable tr[data-id="${id}"]`);
+        const editButton = row.find('.edit-button');
+        const deleteButton = row.find('.delete-button');
+
+        const nameCell = row.find('td:nth-child(2)');
+        const titleCell = row.find('td:nth-child(3)');
+        const updatedName = nameCell.text();
+        const updatedTitle = titleCell.text();
+
+        const raceSelect = row.find('td:nth-child(4) select');
+        const professionSelect = row.find('td:nth-child(5) select');
+        const bannedSelect = row.find('td:nth-child(8) select');
+
+        const updatedRace = raceSelect.val();
+        const updatedProfession = professionSelect.val();
+        const updatedBanned = bannedSelect.val();
+
+        updateRecord(id, updatedName, updatedTitle, updatedRace, updatedProfession, updatedBanned);
+
+        makeFieldNotEditable(nameCell);
+        makeFieldNotEditable(titleCell);
+
+        replaceDropdownWithValue(raceSelect);
+        replaceDropdownWithValue(professionSelect);
+        replaceDropdownWithValue(bannedSelect);
+
+        deleteButton.show();
+        editButton.html(`<a href="#" onclick="editRecord(${id})"><img src="/img/e.jpg" alt="Edit" class="icon" width="50" height="50"></a>`);
+    }
+
+
+    function makeFieldEditable(cell) {
+        cell.attr('contenteditable', 'true').addClass('editable-field');
+    }
+
+    function makeFieldNotEditable(cell) {
+        cell.attr('contenteditable', 'false').removeClass('editable-field');
+    }
+
+    function replaceWithDropdown(cell, options) {
+        const currentValue = cell.text();
+        const dropdown = `<select class="editable-field ${cell.hasClass('banned-select') ? 'banned-select' : ''}">${options.map(option => `<option value="${option}" ${option === currentValue ? 'selected' : ''}>${option}</option>`).join('')}</select>`;
+        cell.html(dropdown);
+    }
+
+    function replaceDropdownWithValue(dropdown, updatedValue) {
+        const selectedOption = dropdown.find(`option[value="${updatedValue}"]`);
+        if (selectedOption.length > 0) {
+            dropdown.parent().html(selectedOption.text());
+        }
+    }
+
+    function createRecord() {
+        let valueName = $('#inputNameNew').val();
+        let valueTitle = $('#inputTitleNew').val();
+        let valueRace = $('#selectRaceNew').val();
+        let valueProfession = $('#selectProfessionNew').val();
+        let valueLevel = $('#inputLevelNew').val();
+        let valueBirthday = $('#inputBirthdayNew').val();
+        let valueBanned = $('#selectBannedNew').val();
+        console.log(valueName)
+        console.log(valueTitle)
+        console.log(valueRace)
+        console.log(valueProfession)
+        console.log(valueLevel)
+        console.log(valueBirthday)
+        console.log(valueBanned)
+
+
+        let url = '/rest/players';
+        const dataSecond = {
+            name: valueName,
+            title: valueTitle,
+            race: valueRace,
+            profession: valueProfession,
+            banned: valueBanned,
+            level: valueLevel,
+            birthday: new Date(valueBirthday).getTime()
+        };
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            dataType: 'json',
+            contentType: 'application/json;charset=UTF-8',
+            async: false,
+            data: JSON.stringify(dataSecond),
+            success: function () {
+                $('#inputNameNew').val("");
+                $('#inputTitleNew').val("");
+                $('#selectRaceNew').val("");
+                $('#selectProfessionNew').val("");
+                $('#inputLevelNew').val("");
+                $('#inputBirthdayNew').val("");
+                $('#selectBannedNew').val("");
+                getList(getCurrentPage() - 1);
+            },
+            error: function (error) {
+                console.error(error);
+
+            }
+        });
+    }
+
+    async function getList(pageNumber) {
+        try {
+            let countPerPage = $("#labelOne").val();
+            if (countPerPage == null) {
+                countPerPage = 3;
+            }
+
+            const response = await $.get(`/rest/players?pageNumber=${pageNumber}&pageSize=${countPerPage}`);
+            const table = $("#personTable");
+            table.find("tr:gt(0)").remove();
+
+            response.forEach((e) => {
+                const row = $("<tr>");
+                row.attr('data-id', e.id);
+                $("<td>").text(e.id).appendTo(row);
+                $("<td>").text(e.name).appendTo(row);
+                $("<td>").text(e.title).appendTo(row);
+                $("<td>").text(e.race).appendTo(row);
+                $("<td>").text(e.profession).appendTo(row);
+                $("<td>").text(e.level).appendTo(row);
+                $("<td>").text(new Date(e.birthday).toLocaleDateString()).appendTo(row);
+                $("<td>").text(e.banned).appendTo(row);
+                $("<td>").html(`<a href="#" onclick="editRecord(${e.id})" class="edit-button"><img src="/img/e.jpg" alt="Edit" class="icon" width="50" height="50"></a>`).appendTo(row);
+                $("<td>").html(`<a href="#" onclick="deleteRecord(${e.id})" class="delete-button"><img src="/img/d.jpg" alt="Delete" class="icon" width="55" height="40"></a>`).appendTo(row);
+
+                table.append(row);
+            });
+
+            const allCount = await getAllCounts();
+            let pageCount = Math.ceil(allCount / countPerPage);
+
+            $('#buttons').empty();
+
+            for (let i = 0; i < pageCount; i++) {
+                let buttonTag = `<button onclick="getList(${i})" class="pgn-btn-styled">${i + 1}</button>`;
+                if (i === pageNumber) {
+                    buttonTag = `<button onclick="getList(${i})" class="pgn-btn-styled current">${i + 1}</button>`;
+                }
+                $('#buttons').append(buttonTag);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+
+        async function getAllCounts() {
+            try {
+                const res = await $.get("/rest/players/count");
+                return parseInt(res);
+            } catch (error) {
+                console.error(error);
+                return 0;
+            }
+        }
+    }
+</script>
 </body>
 </html>
